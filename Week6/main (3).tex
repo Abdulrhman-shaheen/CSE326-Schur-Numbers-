@@ -1,0 +1,126 @@
+\documentclass{report}
+\usepackage{graphicx} 
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry} 
+\usepackage{enumitem} 
+\usepackage{listings} 
+\usepackage{xcolor}
+
+% Define CUDA syntax highlighting
+\lstdefinestyle{cuda}{
+    language=C++,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    stepnumber=1,
+    breaklines=true,
+    tabsize=4
+}
+
+
+\geometry{a4paper, left=20mm, right=20mm, top=20mm, bottom=20mm}
+
+\renewcommand{\thesection}{\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+
+\begin{document}
+
+\section{Introduction}
+
+Parallel computing plays a crucial role in efficiently solving computationally intensive problems by executing multiple tasks concurrently. General Purpose Graphics Processing Units (GPGPUs) provide a powerful platform for parallel computing, offering high computational performance through their massively parallel architectures. Unlike CPUs, GPUs consist of thousands of lightweight cores that enable large-scale concurrent execution, making them well-suited for solving NP-hard problems such as the Traveling Salesman Problem (TSP), All-Pairs Shortest Path, and Schur Numbers.
+
+To tackle these problems, CUDA-based parallel computing is employed, leveraging metaheuristic algorithms like the Ant Colony System (ACS) to approximate optimal solutions efficiently. However, achieving efficient memory utilization, optimized execution, and proper thread synchronization is critical for maximizing performance.  
+
+\textbf{System Overview}  
+The proposed system follows a structured execution flow. First, the data preprocessing stage processes the input before memory allocation is performed on both CPU and GPU. Next, the data transfer step moves data from CPU to GPU, where parallel kernel computations are executed. Finally, the result transfer stage returns the computed output from GPU to CPU.  
+
+\textbf{Memory Organization in GPUs } 
+GPUs are structured into multiple Streaming Multiprocessors (SMs), each containing several stream processors (cores). Threads are organized into blocks, with each block assigned to a specific SM. While GPUs provide high memory bandwidth, overall memory access can still be a bottleneck due to limited per-core availability. To mitigate this, efficient memory access patterns and thread parallelism models (such as CUDA’s hierarchical memory structure) are utilized.
+
+This paper explores various GPU optimization techniques, focusing on memory management, execution speedup, and parallel processing strategies to enhance performance in NP-hard problem-solving.
+
+
+\section{CUDA-NP: Nested Parallelism in GPGPU Applications}
+
+CUDA-NP is a framework designed to optimize \textit{nested thread-level parallelism (Nested TLP)} in CUDA applications by eliminating the inefficiencies of \textit{dynamic parallelism}, which suffers from high kernel launch overhead and global memory communication bottlenecks.
+
+To enhance execution efficiency, CUDA-NP restructures thread execution within a thread block by:
+\begin{enumerate}
+    \item \textbf{Remapping threads into a 1D structure} for better control.
+    \item \textbf{Assigning multiple slave threads} to each master thread for parallel loop execution.
+    \item \textbf{Utilizing registers and shared memory} to reduce latency and avoid global memory dependence.
+\end{enumerate}
+
+This approach improves workload distribution, particularly for applications with \textit{small nested parallel loops}, where standard TLP is insufficient. Implemented as a \textit{source-to-source compiler}, CUDA-NP automatically transforms CUDA kernels using OpenMP-like directives.
+
+\subsection{Performance Results}
+Benchmarks on \textbf{NVIDIA GTX 680 GPUs} demonstrate that CUDA-NP achieves:
+\begin{itemize}
+    \item \textbf{Up to 6.69× speedup} over baseline implementations.
+    \item \textbf{2.01× average speedup} across multiple test cases.
+\end{itemize}
+
+By minimizing kernel launch overhead and optimizing thread cooperation, CUDA-NP provides an \textbf{efficient alternative} to dynamic parallelism for nested parallel workloads.
+
+
+
+\section{Nested Parallelism in GPGPU Programs}
+
+GPGPU applications rely heavily on thread-level parallelism (TLP) to mask memory access latencies. However, parallel loops still exist within kernel code, and leveraging them effectively can significantly impact performance.
+
+\subsection{Example: Transposed-Matrix-Vector Multiplication (TMV)}
+A common example of nested parallelism is the transposed-matrix-vector multiplication (TMV) kernel. In this computation, Each GPU thread is responsible for computing a single element of the output vector \texttt{c}. The variable \texttt{tx} uniquely identifies each thread in the 1D grid using its thread index (\texttt{threadIdx.x}), block index (\texttt{blockIdx.x}), and block size (\texttt{blockDim.x}). This ensures that every thread works on a different element of the output vector. The kernel operates as follows:
+
+\begin{lstlisting}[style=cuda, caption={Transposed-Matrix-Vector Multiplication (TMV) Kernel}, label={lst:tmv_kernel}]
+__global__ void tmv(float *a, float *b, float *c, int w, int h) {
+    float sum = 0;
+    int tx = threadIdx.x + blockIdx.x * blockDim.x;
+    for (int i = 0; i < h; i++)
+        sum += a[i * w + tx] * b[i];
+    c[tx] = sum;
+}
+\end{lstlisting}
+
+
+\section{CUDA-NP: A Directive-Based Compiler Framework for Nested Parallelism}
+
+\subsection{CUDA-NP Optimization: Example Kernel}
+The following code demonstrates how CUDA-NP transforms a baseline kernel into an optimized version by introducing nested parallelism.
+
+\begin{lstlisting}[style=cuda, caption={Optimized Kernel Using CUDA-NP}, label={lst:optimized_kernel}]
+#define BLOCK_SIZE 16
+__global__ void lud_perimeter_np (float *m, int matrix_dim, int offset) {
+    __shared__ float peri_row[BLOCK_SIZE][BLOCK_SIZE],
+                     peri_col[BLOCK_SIZE][BLOCK_SIZE],
+                     dia[BLOCK_SIZE][BLOCK_SIZE];
+
+    int array_offset;
+    
+    if (slave_id == 0) { // Master thread calculates the offset
+        array_offset = offset * matrix_dim + offset;
+    }
+
+    // Broadcast offset to slave threads
+    array_offset = read_from_master(array_offset);
+
+    // Parallel execution with slave threads
+    for (int i = slave_id; i < BLOCK_SIZE; i+=slave_size)
+        peri_row[i][idx] = m[array_offset + (blockIdx.x + 1) * BLOCK_SIZE + matrix_dim * i];
+}
+\end{lstlisting}
+
+\subsection{Key Transformations in CUDA-NP}
+The main transformations performed by the CUDA-NP compiler include:
+\begin{itemize}
+    \item Thread Hierarchy Modification: The original thread block (TB) structure is modified to include slave threads, which assist in executing parallel loops.
+    \item Control Flow Adjustments: Master threads execute sequential code, while slave threads remain inactive. For parallel sections, all slave threads become active.
+    \item Efficient Data Sharing: Instead of using global memory for inter-thread communication, shared memory and registers are used to broadcast computed values.
+    \item Loop Distribution: The workload is distributed across multiple threads, reducing individual thread execution time.
+\end{itemize}
+
+
+\end{document}

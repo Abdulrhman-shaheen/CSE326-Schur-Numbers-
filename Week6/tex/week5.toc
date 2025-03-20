@@ -1,0 +1,16 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {section}{\numberline {2}SAT Approach in Schur Number Problem}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}How SAT Solvers Work}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Constraints Used in the SAT Encoding}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Cube-and-Conquer Method}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Proofs Used in the Paper}{5}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Results of the SAT Approach and Cube-and-Conquer}{5}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Running CUDA Code on Local Machines}{6}{section.3}%
+\contentsline {section}{\numberline {4}Past Papers on CUDA Programming in NP Problems}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}CUDA-NP: Nested Parallelism in GPGPU Applications}{7}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {4.1.1}Our Takeaways}{8}{subsubsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.2}Nested Parallelism in GPGPU Programs}{8}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {4.2.1}Our Takeaways}{8}{subsubsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.3}CUDA-NP: A Directive-Based Compiler Framework for Nested Parallelism}{8}{subsection.4.3}%
+\contentsline {subsubsection}{\numberline {4.3.1}Our Takeaways}{9}{subsubsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.4}Application to Schur Numbers Problem}{9}{subsection.4.4}%

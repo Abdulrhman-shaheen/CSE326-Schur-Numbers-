@@ -1,0 +1,1 @@
+/usr/bin/nvcc -forward-unknown-to-host-compiler  -Wno-deprecated-gpu-targets "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-fPIC -Wno-deprecated-gpu-targets -shared -dlink --options-file CMakeFiles/matrixMul.dir/deviceObjects1.rsp -o CMakeFiles/matrixMul.dir/cmake_device_link.o --options-file CMakeFiles/matrixMul.dir/deviceLinkLibs.rsp

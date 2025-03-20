@@ -1,0 +1,3 @@
+/home/abdelrhman/cuda/cuda-samples/Samples/0_Introduction/matrixMul/CMakeFiles/matrixMul.dir
+/home/abdelrhman/cuda/cuda-samples/Samples/0_Introduction/matrixMul/CMakeFiles/edit_cache.dir
+/home/abdelrhman/cuda/cuda-samples/Samples/0_Introduction/matrixMul/CMakeFiles/rebuild_cache.dir
