@@ -18,7 +18,7 @@
 \usepackage{url}
 \usepackage{tikz}
 \usepackage{subcaption}
-
+\usepackage{booktabs}
 % Code listing style
 \lstset{
     language=Python,
@@ -51,7 +51,7 @@
 \newpage
 \maketitle
 
-\section*{Introduction}
+\section{Introduction}
 
 At the beginning of this week, we decided to tackle the number coloring problem using CUDA to leverage the power of parallel computing. Our goal was to efficiently explore a large decision space where numbers are assigned to color groups under a mathematical constraint (such as \(x + y = z\)).
 
@@ -81,7 +81,7 @@ This is considered a problem since we are now way near $S(6)$, and it's taking a
 % ---------------------- FAILED ATTEMPT 1 ----------------------
 \section{Failed Attempt 1: Direct Tree-Based Recursive Thread Launching}
 
-\subsection*{The Idea}
+\subsection{The Idea}
 At an early stage in our project, we explored an approach that directly modeled the decision tree through recursive kernel launches in CUDA. The idea was simple:
 \begin{itemize}
     \item Each CUDA thread would attempt to place a number into a color group.
@@ -89,14 +89,14 @@ At an early stage in our project, we explored an approach that directly modeled 
     \item This would form a parallel tree of threads, where each level represented one number in the sequence.
 \end{itemize}
 
-\subsection*{Why It Seemed Promising}
+\subsection{Why It Seemed Promising}
 \begin{itemize}
     \item CUDA offers \textbf{dynamic parallelism}, allowing kernels to launch other kernels from the device.
     \item This mirrored recursive backtracking algorithms used on CPUs and seemed like a natural mapping.
     \item We expected this would maximize GPU utilization and reduce decision latency.
 \end{itemize}
 
-\subsection*{Why It Failed in Practice}
+\subsection{Why It Failed in Practice}
 \begin{itemize}
     \item \textbf{t1. High Launch Overhead:} Each dynamic kernel launch added significant latency, making deep trees extremely slow.
     \item \textbf{t2. Limited Stack Size:} Device-side stack sizes are small, leading to overflows on deep recursion.
@@ -105,23 +105,23 @@ At an early stage in our project, we explored an approach that directly modeled 
     \item \textbf{t5. Debugging Nightmare:} Recursive kernels were hard to debug and often failed silently.
 \end{itemize}
 
-\subsection*{Conclusion}
+\subsection{Conclusion}
 While elegant in theory, recursive tree-based execution did not scale or behave reliably on the GPU. This pushed us to seek flatter, iterative strategies.
 
 % ---------------------- FAILED ATTEMPT 2 ----------------------
-\section*{Failed Attempt 2: Global Queue-Based Work Sharing}
+\section{Failed Attempt 2: Global Queue-Based Work Sharing}
 
-\subsection*{The Idea}
+\subsection{The Idea}
 Next, we implemented a global work queue approach where each thread would take a configuration from a shared queue, expand it by trying valid placements, and then push the resulting configurations back.
 
-\subsection*{Why It Seemed Promising}
+\subsection{Why It Seemed Promising}
 \begin{itemize}
     \item It resembled a parallel BFS, often used in CPU multi-threading.
     \item Allowed exploration without deep recursion.
     \item Theoretically scalable with good memory capacity.
 \end{itemize}
 
-\subsection*{Why It Failed in Practice}
+\subsection{Why It Failed in Practice}
 \begin{itemize}
     \item \textbf{t1. Atomic Contention:} Global atomic operations created massive delays.
     \item \textbf{t2. Race Conditions:} Queue corruption occurred frequently despite precautions.
@@ -130,23 +130,23 @@ Next, we implemented a global work queue approach where each thread would take a
     \item \textbf{t5. Debugging Complexity:} Race bugs were hard to identify or replicate.
 \end{itemize}
 
-\subsection*{Conclusion}
+\subsection{Conclusion}
 Despite being more stable than dynamic launching, the queue model was still inefficient due to contention, imbalance, and high memory costs.
 
 % ---------------------- FAILED ATTEMPT 3 ----------------------
-\section*{Failed Attempt 3: Thread-Per-Configuration Brute Force}
+\section{Failed Attempt 3: Thread-Per-Configuration Brute Force}
 
-\subsection*{The Idea}
+\subsection{The Idea}
 In this brute-force model, we pre-generated all possible color assignments and launched one thread per configuration to validate legality under the constraint.
 
-\subsection*{Why It Seemed Promising}
+\subsection{Why It Seemed Promising}
 \begin{itemize}
     \item Embarrassingly parallel — no inter-thread communication required.
     \item Easy to implement and free of control flow divergence.
     \item Seemed like a good fit for massive GPU parallelism.
 \end{itemize}
 
-\subsection*{Why It Failed in Practice}
+\subsection{Why It Failed in Practice}
 \begin{itemize}
     \item \textbf{t1. Combinatorial Explosion:} \(k^n\) configurations quickly overwhelmed device capacity.
     \item \textbf{t2. Resource Usage:} Threads consumed too many registers and shared memory.
@@ -155,23 +155,89 @@ In this brute-force model, we pre-generated all possible color assignments and l
     \item \textbf{t5. No Pruning:} No early exit from bad paths — unlike backtracking.
 \end{itemize}
 
-\subsection*{Conclusion}
+\subsection{Conclusion}
 Although conceptually simple, this brute-force strategy was wasteful and completely unscalable.
 
 % ---------------------- SUCCESSFUL APPROACH ----------------------
-\section*{Successful Approach: Smart encoding one level at a time Exploration with Shared Memory}
+\section{Successful Approach: Smart Encoding DFS iterative Exploration with Shared Memory}
 
-\subsection*{The Idea}
-After the above failures, we developed an iterative method that simulated backtracking using stacks in shared memory. Each thread/block maintained its own local stack of partial assignments and explored them in a DFS manner. Our code would start at $S(2)$ and then work its way up to $S(4)$. 
-It treated the coloring as bit masks instead of arrays that's \texttt{red = 0b1001, blue = 0b0110} represented the coloring of $S(2)$ where \texttt{red = [1, 4], blue = [2, 3]}. This saved a lot of memory.
+\subsection{The Idea}
+After the above failures, we developed an iterative method that simulated backtracking using stacks in shared memory. Each thread/block maintained its own local stack of partial assignments and explored them in a DFS manner. Our code would start at $S(2)$ and then work its way up to $S(4)$. Here are the novel approaches we took:
 
+\subsection{Path Encoding Scheme}
+We developed a compact binary encoding to represent color assignments efficiently in CUDA memory. Here's how we systematically designed it:
+
+\subsubsection{Core Components}
 \begin{itemize}
-    \item No recursion — purely iterative.
-    \item No global memory queues — only fast shared memory.
-    \item Threads cooperatively pruned bad states and backtracked.
+    \item \textbf{2 Bits Per Number}: Each number (6--44) uses 2 bits to encode its color:
+    \[
+    \begin{cases}
+        00 \rightarrow \text{Red} \\
+        01 \rightarrow \text{Blue} \\
+        10 \rightarrow \text{Green} \\
+        11 \rightarrow \text{Cyan}
+    \end{cases}
+    \]
+    
+    \item \textbf{Two-Part Storage}:
+    \begin{center}
+        \begin{tabular}{lll}
+            \toprule
+            Numbers & Storage & Total Bits \\
+            \midrule
+            6--37 & 64-bit \texttt{part1} & 32 nums $\times$ 2 bits = 64 bits \\
+            38--44 & 64-bit \texttt{part2} & 7 nums $\times$ 2 bits = 14 bits \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
 \end{itemize}
 
-\subsection*{Why It Worked}
+\subsubsection{Walkthrough Example}
+Consider assigning:
+\begin{itemize}
+    \item 6 $\rightarrow$ Green (10)
+    \item 7 $\rightarrow$ Cyan (11)
+    \item 8 $\rightarrow$ Red (00)
+\end{itemize}
+
+Encoded in \texttt{part1} as:
+\[
+\underbrace{00}_{\text{8}} \ \underbrace{11}_{\text{7}} \ \underbrace{10}_{\text{6}} \ \texttt{...} = \text{0xE (hex)} \quad \text{(Only first 6 bits shown)}
+\]
+
+\subsubsection{Key Benefits}
+\begin{itemize}
+    \item \textbf{Memory Efficient}: 78 bits total vs $\sim$400 bytes for arrays
+    \item \textbf{Fast Validation}: Bitmask checks use native GPU operations
+    \item \textbf{CUDA-Friendly}: Aligns with 64-bit memory transactions
+    \item \textbf{Unique Signatures}: Enables duplicate detection via bitwise comparisons
+\end{itemize}
+
+\subsection{Bitmask Color Encoding}
+In this technique, we represented each color as a bitmask instead of using arrays. For example, the coloring of $S(2)$ was represented as:
+\[
+\texttt{red} = 0b1001 \quad \texttt{blue} = 0b0110
+\]
+which corresponds to \texttt{red = [1, 4]} and \texttt{blue = [2, 3]}.
+
+This representation significantly reduced memory consumption—by a factor of 16--32$\times$ in practice—while allowing for extremely fast bitwise operations on color sets. Using native bitwise logic, we could quickly validate constraints and apply transformations directly on GPU registers without additional memory overhead.
+
+\subsection{Iterative DFS with Shared Memory}
+Although the traditional approach would use recursion, we adopted a fully iterative design to comply with CUDA's limited support for recursion and to maximize performance.
+
+Each thread block explored the space using a DFS traversal pattern implemented with explicit stacks stored in shared memory. Each level (starting from $z = 6$) would generate and validate candidate colorings for the next level. Once valid, the state was pushed to the local stack and passed forward for the next iteration.
+
+This pattern continued up to $z = 44$, covering the required depth from $S(2)$ to $S(4)$. Notably, we began at $z = 6$ because the initial 5 nodes were assigned to a new color by definition. This approach allowed us to:
+\begin{itemize}
+    \item Parallelize across threads, each handling a separate DFS path
+    \item Maintain high GPU occupancy by reusing shared memory
+    \item Avoid kernel launch overhead by staying within the device context
+\end{itemize}
+
+
+
+
+\subsection{Why It Worked}
 \begin{itemize}
     \item \textbf{Fast Memory:} Shared memory eliminated global latency and contention.
     \item \textbf{No Launch Overhead:} Entire search executed within one kernel.
@@ -180,14 +246,23 @@ It treated the coloring as bit masks instead of arrays that's \texttt{red = 0b10
     \item \textbf{Debuggable:} Easier to trace and maintain than previous designs.
 \end{itemize}
 
-\subsection*{Implementation Highlights}
+\subsection{Implementation Highlights}
 \begin{itemize}
     \item Per-thread stacks stored the current index and partial assignments.
     \item Warp-level synchronization used for safe shared memory updates.
     \item Valid configurations were atomically added to a global output array.
 \end{itemize}
 
-\subsection*{Conclusion}
+\subsection{Performance Results}
+We tested our final implementation on a range of instances, from $S(2)$ to $S(4)$. The results were promising acheving the same task that Python did in only 300 ms! The results are shown in Figure \ref{fig:cudaTime}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{images/finalCUDAwithTime.png}
+    \caption{CUDA Time for $S(2)$ to $S(4)$}
+    \label{fig:cudaTime}
+\end{figure}
+\subsection{Conclusion}
 This method finally balanced performance, scalability, and maintainability. It took advantage of CUDA’s strengths while avoiding known pitfalls, allowing us to solve much larger coloring instances efficiently.
 
 
