@@ -62,7 +62,7 @@ This report documents our journey through three major failed attempts before arr
 
 \section{Parallelism in General}
 
-As we stated before in Week 5 how our Parallelism should work recursively, we know have a graphical diagram of what the recursion tree should look like to try all valid colorings from $S(2)$ to reach $S(3)$. (Note: The figure couldn't be rendered due to high resolution please view in \texttt{images/recursionTree.png}
+As we stated before in Week 5 how our Parallelism should work recursively, we know have a graphical diagram of what the recursion tree should look like to try all valid colorings from $S(2)$ to reach $S(3)$. (Note: The figure couldn't be rendered due to high resolution please view in \texttt{images/recursionTree.png} or \href{https://github.com/Abdulrhman-shaheen/CSE326-Schur-Numbers-/blob/master/Week8/tex/images/recursionTree.png}{\textbf{\color{blue}\underline{here}}}
 % \begin{figure}[h]
 %     \centering
 %     \includegraphics[height=20cm,width=10cm]{images/recursionTree.png}
@@ -254,16 +254,17 @@ This pattern continued up to $z = 44$, covering the required depth from $S(2)$ t
 \end{itemize}
 
 \subsection{Performance Results}
-We tested our final implementation on a range of instances, from $S(2)$ to $S(4)$. The results were promising acheving the same task that Python did in only 300 ms! The results are shown in Figure \ref{fig:cudaTime}.
+We tested our final implementation\footnote{The code can be found in the repo in \texttt{Code/main.cu}} on a range of instances, from $S(2)$ to $S(4)$. The results were promising acheving the same task that Python did in only 300 ms! The results are shown in Figure \ref{fig:cudaTime}.
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.5\textwidth]{images/finalCUDAwithTime.png}
+    \includegraphics[width=0.5\textwidth]{images/finalCUDAwithTime.jpeg}
     \caption{CUDA Time for $S(2)$ to $S(4)$}
     \label{fig:cudaTime}
 \end{figure}
 \subsection{Conclusion}
 This method finally balanced performance, scalability, and maintainability. It took advantage of CUDA’s strengths while avoiding known pitfalls, allowing us to solve much larger coloring instances efficiently.
+
 
 
 
