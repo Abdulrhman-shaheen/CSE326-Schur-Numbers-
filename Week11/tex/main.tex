@@ -38,11 +38,11 @@ We tried to lean Reinforcement learning in 1 day which was not an ideal choice. 
 Alpha Go is a computer program developed by DeepMind Technologies, a subsidiary of Alphabet Inc. It plays the board game Go and was the first program to defeat a professional human player, the reigning world champion, and several other top players without handicaps on a full-sized board. The program uses deep neural networks and reinforcement learning to improve its performance.
 \subsection{Adapting Alpha Go Architecture}
 In our coloring problem, we noticed that the problem actually had a massive state recursive tree (\href{https://github.com/Abdulrhman-shaheen/CSE326-Schur-Numbers-/blob/master/Week8/tex/images/recursionTree.png}{\underline{Link}}), and brute forcing while providing a correct solution for $S(4)$, could not be scaled to $S(5)$ or $S(6)$ due to memory constraints (Maybe if we had more memory...). So we thought ``What also has a massive state tree?'' and it was the GO game which has approximately $2.1 \times 10^{170}$ legal board positions. \\
-So if it uses RL and MCTS to accurately traverse the states tree, so could we. One challenge was how we would assign the rewards or what to use when estimating the value of a state. 
+So if it uses RL and MCTS to accurately traverse the states tree, so could we. One challenge was how we would assign the rewards or what to use when estimating the value of a state. Our solution was to generate random states and see their outcomes. If the outcome was a valid coloring, we would assign a reward of $0$, and if it was invalid, we would assign a reward of $-1$ to all the states in the path. Additionally, during the training phase, we would assign a reward of $+1$ to the states that led to maximum depth we required it to reach, favoring the states that led to this outcome.  
 
 
 \section{Implementation}
-We adopted a simplified version of the AlphaGo architecture to solve the Schur Number coloring problem. Our architecture consists of three main components: a \textbf{Policy-Value Network}, a \textbf{Monte Carlo Tree Search (MCTS)} module, and a \textbf{training loop} that mimics self-play reinforcement learning.
+We adopted a simplified version of the Alpha Go architecture to solve the Schur Number coloring problem. Our architecture consists of three main components: a \textbf{Policy-Value Network}, a \textbf{Monte Carlo Tree Search (MCTS)} module, and a \textbf{training loop} that mimics self-play reinforcement learning.
 
 \subsection{Policy-Value Network}
 Our neural network takes as input the current coloring state represented as four binary bitmasks, one for each color class (Red, Blue, Green, Cyan), encoded into a $4 \times 64$ tensor. The network has the following architecture:
@@ -79,11 +79,27 @@ These collected triplets $(s, \pi, v)$ are used to train the network using a com
 \subsection{Key Hyperparameters}
 \begin{itemize}
     \item MCTS Simulations per Move: 100--500
-    \item Max Element ($z$): up to 30
+    \item Max Element ($z$): up to 20
     \item Training Epochs: 10
     \item Optimizer: Adam, with a learning rate of $0.001$
     \item Batch Size: 32
 \end{itemize}
 
-  
+
+\section{Results}
+
+We tried to train the model for a maximum depth of 20 that's to do random rollouts and see if the model can learn to color the graph till maximum depth of 20. The results were quite disappointing as
+the model could only reach a maximum depth of 27. We don't understand enough theory to actually debug if this is a bad policy, or a bad value function. Or if it was because the data was not enough to generalize and actually learn the ``coloring game'',as we would call it, since to train such a network to generalize we probably need more ground truth data. 
+The results are shown in figure \ref{fig:results}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/inference_results.png}
+    \caption{The model trying to assign numbers to valid colors.}
+    \label{fig:results}
+\end{figure}
+\section{Conclusion and Future Directions}
+In this report, we presented a simplified version of the Alpha Go architecture to tackle the Schur Number coloring problem. While our implementation successfully demonstrated the use of MCTS and a neural network for state evaluation, the results were not as promising as we had hoped. The model struggled to generalize and reach deeper states effectively.  \\
+\textbf{Future Directions:}
+We would also try to implement the code on our own hopefully because we can't trust the code we generated to be 100\% correct. Also, we aim to generate our own ground truth data using the CUDA code we wrote previously. Now, the model would have a better chance to learn the coloring game. Also, this week's implementation was using a linear policy and value function, we need to implement a more complex one using a CNN, or an LSTM or a transformer architecture to capture long-term dependencies in the state space. It will not be easy with minimal experience in reinforcement learning, but we are willing to learn and improve. 
 \end{document}
