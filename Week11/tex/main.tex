@@ -1,0 +1,89 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titling}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{tikz}
+\usepackage{subcaption}
+
+
+
+
+
+\begin{document}
+
+\include{title}
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This week we aimed to understand how the popular Alpha Go Deep Learning Model works, and try to implement a simplified version that utilizes a \textbf{Policy Function}, \textbf{Value Function}, and a \textbf{Monte Carlo Tree Search} (MCTS) algorithm. 
+We tried to lean Reinforcement learning in 1 day which was not an ideal choice. We managed to get a working demo. We illustrate the thought process, the implementation, and the results in this report.
+
+\section{Our Thought Process}
+\subsection{Alpha Go}
+Alpha Go is a computer program developed by DeepMind Technologies, a subsidiary of Alphabet Inc. It plays the board game Go and was the first program to defeat a professional human player, the reigning world champion, and several other top players without handicaps on a full-sized board. The program uses deep neural networks and reinforcement learning to improve its performance.
+\subsection{Adapting Alpha Go Architecture}
+In our coloring problem, we noticed that the problem actually had a massive state recursive tree (\href{https://github.com/Abdulrhman-shaheen/CSE326-Schur-Numbers-/blob/master/Week8/tex/images/recursionTree.png}{\underline{Link}}), and brute forcing while providing a correct solution for $S(4)$, could not be scaled to $S(5)$ or $S(6)$ due to memory constraints (Maybe if we had more memory...). So we thought ``What also has a massive state tree?'' and it was the GO game which has approximately $2.1 \times 10^{170}$ legal board positions. \\
+So if it uses RL and MCTS to accurately traverse the states tree, so could we. One challenge was how we would assign the rewards or what to use when estimating the value of a state. 
+
+
+\section{Implementation}
+We adopted a simplified version of the AlphaGo architecture to solve the Schur Number coloring problem. Our architecture consists of three main components: a \textbf{Policy-Value Network}, a \textbf{Monte Carlo Tree Search (MCTS)} module, and a \textbf{training loop} that mimics self-play reinforcement learning.
+
+\subsection{Policy-Value Network}
+Our neural network takes as input the current coloring state represented as four binary bitmasks, one for each color class (Red, Blue, Green, Cyan), encoded into a $4 \times 64$ tensor. The network has the following architecture:
+\begin{itemize}
+    \item \textbf{2 Convolutional Layers:} Each with 64 filters of kernel size 3, followed by Batch Normalization and ReLU activation. These layers capture local spatial features within each bitmask.
+    \item \textbf{Flattening:} The output is flattened into a vector of size $64 \times 64$.
+    \item \textbf{Fully Connected Layer:} A dense layer with 256 units and ReLU activation to create a shared latent representation.
+    \item \textbf{Output Heads:}
+    \begin{itemize}
+        \item \textbf{Policy Head:} Outputs a probability distribution over 4 actions (corresponding to the 4 colors), using a Softmax layer.
+        \item \textbf{Value Head:} Predicts a scalar value estimating the expected outcome from the current state, using a Tanh activation to bound the output between -1 and 1.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Monte Carlo Tree Search (MCTS)}
+We implemented a basic version of MCTS to guide action selection during self-play:
+\begin{itemize}
+    \item \textbf{Selection:} Traverse the tree using the PUCT formula to balance exploration and exploitation.
+    \item \textbf{Expansion:} For a selected node, we expand valid children using the policy output from the neural network.
+    \item \textbf{Simulation:} A random rollout is performed to the end of the episode using valid actions.
+    \item \textbf{Backpropagation:} The simulation result is backpropagated to update visit counts and node values.
+\end{itemize}
+The search outputs a policy distribution over actions, based on visit counts at the root.
+
+\subsection{Training Loop}
+We simulate self-play episodes using MCTS-guided decisions. For each episode:
+\begin{itemize}
+    \item We begin from a hardcoded initial state (covering some known valid subsets).
+    \item At each time step, we perform MCTS with the current state and collect the state, policy, and outcome.
+    \item When the episode ends (either by reaching a maximum element or by failure), we assign a reward of $+1$ for success and $-1$ for failure.
+\end{itemize}
+These collected triplets $(s, \pi, v)$ are used to train the network using a combination of cross-entropy loss for the policy head and mean squared error for the value head.
+
+\subsection{Key Hyperparameters}
+\begin{itemize}
+    \item MCTS Simulations per Move: 100--500
+    \item Max Element ($z$): up to 30
+    \item Training Epochs: 10
+    \item Optimizer: Adam, with a learning rate of $0.001$
+    \item Batch Size: 32
+\end{itemize}
+
+  
+\end{document}
