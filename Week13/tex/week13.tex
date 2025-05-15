@@ -98,7 +98,7 @@ To ensure that the model adheres to the additive constraint of the Schur problem
 The model is trained using a standard cross-entropy loss on valid color predictions. Each training example is a prefix of a sequence, and the target is the color of the next number. Padding is applied during batching to handle variable sequence lengths, and training is done using Adam optimizer with default parameters. 
 
 \subsection{Evaluation}
-We had no concrete evaluation metrics for the model, but we ran the model on a few sequences and kept predicting the next color and it did incredibly well for values under $z = 80$. We would start with a sequence of length 5 and keep predicting the next color until no more valid colors are left. The model was able to reach sequences of length $60\sim70$. Testing code can be found in the \texttt{code} directory as \texttt{testing.py}.
+We had no concrete evaluation metrics for the model, but we ran the model on a few sequences and kept predicting the next color and it did incredibly well for values under $z = 80$. We would start with a sequence of length 7 and keep predicting the next color until no more valid colors are left. The model was able to reach sequences of length $40\sim50$. Testing code can be found in the \texttt{code} directory as \texttt{testing.py}.
 Below are some results of the model on a few sequences:
 
 
