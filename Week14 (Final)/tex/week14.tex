@@ -118,11 +118,26 @@ Each training example is a prefix of a sequence, and the target is the color of 
 number. After training the transformer locally the results were somehow decent. In figure \ref{fig:transformer} it shows the results of taking the average output length the transformer could reach for 500 trials for each input length from 6 to 70.
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/TransformerOnly.png}
+    \includegraphics[width=0.5\textwidth]{images/TransformerOnly.png}
     \caption{Transformer model results}
     \label{fig:transformer}
 \end{figure} 
-In this final week we tried to fine tune the transformer that has some good initial predictions using Reinforcement learning to try to improve its results. We ussed PPO
 
+In this final week we tried to fine tune the transformer that has some good initial predictions using Reinforcement learning to try to improve its results. We used actor-critic method to train the transformer. The actor is the transformer model, and the critic is a neural network
+that evaluates the action taken by the actor. The critic is trained to predict the expected reward for a given state-action pair, and the actor is trained to maximize the expected reward. The training process involves sampling actions from the actor, evaluating them using the critic, 
+and updating both networks based on the observed rewards. This approach allows the transformer to learn from its own predictions and improve over time.
 
+The results of the fine-tuning methods, shown in figure \ref{fig:transformerRL} didn't improve the original transformer model much, but it made it smoother in a way. We believe that this may come from the training of the original transformer that made it overfit the data. The RL fine-tuning was not able to generalize the model enough above the training data.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{images/RLresultsFineTuned.png}
+    \caption{Finetuned Transformer with RL results}
+    \label{fig:transformerRL}
+\end{figure}
+\subsection{Final Approach}
+One final approach we are willing to try even after this final report is using a decoder only transformer (like GPT) to generate the sequence iteratively while using causal masking to ensure that the model only attends to previous tokens in the sequence. This would allow the model to generate the sequence in a more natural way, similar to how humans would do it. We believe that this much better than the encoder-only approach since it would be natural to generate the sequence in a left-to-right manner.
+
+\section{Conclusion}
+In conclusion, we have explored various approaches to solve the Schur numbers problem. We started with a brute-force approach using Python, then moved to C++ and CUDA for parallelization. We introduced a novel encoding approach and a randomized Monte Carlo method to improve our results where we achieved our best results of reaching a sequence of length 113. Finally, we explored reinforcement learning and transformers to tackle the problem in a more sophisticated way. Although we did not achieve the desired results using Deep Learning, we learned a lot about the problem and the techniques we used. We hope that our work will inspire others to continue exploring this fascinating problem.
 \end{document}
